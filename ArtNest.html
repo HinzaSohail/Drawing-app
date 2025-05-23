@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pro Drawing App</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(to bottom right, #7c3aed, #4338ca);
+      font-family: sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin: 20px 0;
+      font-size: 2.5rem;
+    }
+    canvas {
+      border: 4px solid white;
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      touch-action: none;
+    }
+    .controls {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      padding: 1rem;
+      border-radius: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .controls input[type="color"],
+    .controls input[type="range"],
+    .controls select,
+    .controls button {
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      border: none;
+      font-size: 1rem;
+    }
+    .controls button {
+      cursor: pointer;
+      background: white;
+      color: #7c3aed;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pro Drawing App</h1>
+  <canvas id="canvas"></canvas>
+  <div class="controls">
+    <input type="color" id="color" value="#000000">
+    <input type="range" id="lineWidth" min="1" max="50" value="5">
+    <select id="tool">
+      <option value="brush">Brush</option>
+      <option value="rectangle">Rectangle</option>
+      <option value="circle">Circle</option>
+      <option value="line">Line</option>
+    </select>
+    <button onclick="clearCanvas()">Clear</button>
+    <button onclick="undo()">Undo</button>
+    <button onclick="saveImage()">Save</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let history = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth * 2;
+      canvas.height = window.innerHeight * 2;
+      canvas.style.width = ${window.innerWidth}px;
+      canvas.style.height = ${window.innerHeight}px;
+      ctx.scale(2, 2);
+      ctx.lineCap = "round";
+    }
+
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    const colorInput = document.getElementById("color");
+    const lineWidthInput = document.getElementById("lineWidth");
+    const toolSelect = document.getElementById("tool");
+
+    canvas.addEventListener("mousedown", (e) => {
+      startX = e.offsetX;
+      startY = e.offsetY;
+      if (toolSelect.value === "brush") {
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+      }
+      isDrawing = true;
+      saveToHistory();
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (!isDrawing || toolSelect.value !== "brush") return;
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+    });
+
+    canvas.addEventListener("mouseup", (e) => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      const tool = toolSelect.value;
+      const x = e.offsetX;
+      const y = e.offsetY;
+
+      if (tool !== "brush") {
+        drawShape(tool, startX, startY, x, y);
+      }
+      ctx.closePath();
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      if (isDrawing) isDrawing = false;
+    });
+
+    function drawShape(tool, x1, y1, x2, y2) {
+      ctx.beginPath();
+      switch (tool) {
+        case "rectangle":
+          ctx.rect(x1, y1, x2 - x1, y2 - y1);
+          break;
+        case "circle":
+          const r = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+          ctx.arc(x1, y1, r, 0, 2 * Math.PI);
+          break;
+        case "line":
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          break;
+      }
+      ctx.stroke();
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function undo() {
+      if (history.length === 0) return;
+      const img = new Image();
+      img.onload = () => {
+        clearCanvas();
+        ctx.drawImage(img, 0, 0);
+      };
+      const last = history.pop();
+      img.src = last;
+    }
+
+    function saveImage() {
+      const link = document.createElement("a");
+      link.download = "drawing.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    function saveToHistory() {
+      history.push(canvas.toDataURL());
+    }
+
+    // Update brush settings
+    colorInput.addEventListener("change", () => {
+      ctx.strokeStyle = colorInput.value;
+    });
+
+    lineWidthInput.addEventListener("input", () => {
+      ctx.lineWidth = lineWidthInput.value;
+    });
+
+    // Initialize defaults
+    ctx.strokeStyle = colorInput.value;
+    ctx.lineWidth = lineWidthInput.value;
+  </script>
+</body>
+</html>
